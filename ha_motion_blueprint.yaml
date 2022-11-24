@@ -1,0 +1,78 @@
+blueprint:
+  name: My Motion
+  description: Test
+  domain: automation
+  input:
+    motion_sensor:
+      name: Motion Sensor
+      description: MS
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class: motion
+    target_light:
+      name: Lights
+      description: Light
+      selector:
+        target:
+          entity:
+            domain: light
+    no_motion_wait:
+      name: (OPTIONAL) Turn off wait time (seconds)
+      description: Time in seconds to leave the target entity on after last motion is detected. If not used entity will not auto turn off.
+      default: 
+      selector:
+        entity:
+          domain: input_number
+    timer_wait:
+      name: (OPTIONAL) Turn off wait time (seconds)
+      description: Time in seconds to leave the target entity on after last motion is detected. If not used entity will not auto turn off.
+      default: 
+      selector:
+        entity:
+          domain: input_number
+    light_level:
+      name: (OPTIONAL) Select light level
+      description: Light brightness level at start of automation
+      default: 
+      selector:
+        entity:
+          domain: input_number
+mode: restart
+max_exceeded: silent
+
+variables:
+  no_motion_wait: !input no_motion_wait
+  timer_wait: !input timer_wait
+  light_level: !input light_level
+  dim_level: '{{ (states(light_level)|float) / 2  | float(50) }}'
+trigger:
+  - platform: state
+    entity_id: !input motion_sensor
+    to: 'on'
+action:
+  - alias: "Turn on the light"
+    service: light.turn_on
+    target: !input target_light
+    data:
+      brightness: '{{ states(light_level) | float(100) }}'
+  - alias: "Wait until there is no motion from device"
+    wait_for_trigger:
+      platform: state
+      entity_id: !input motion_sensor
+      to: 'off'
+  - alias: "Wait the number of seconds that has been set"
+    delay: 
+      seconds: '{{ states(no_motion_wait) | int(0) }}'
+  - alias: "Turn off the light"
+    service: light.turn_on
+    target: !input target_light
+    data:
+      brightness: '{{ (states(light_level)|float) / 2  | float(50) }}'
+  - alias: "Wait the number of seconds that has been set"
+    delay: 
+      seconds: '{{ states(timer_wait) | int(0) }}'
+  - alias: "Turn off the light"
+    service: light.turn_off
+    target: !input target_light    
+    
